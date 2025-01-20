@@ -1,7 +1,7 @@
-streamlit==1.25.0
-pandas==2.1.1
-networkx==3.1
-matplotlib==3.8.0
-slack-sdk==3.21.3
-plotly==5.17.0
-numpy==1.26.0
+streamlit
+pandas
+networkx
+matplotlib
+slack-sdk
+plotly
+numpy
