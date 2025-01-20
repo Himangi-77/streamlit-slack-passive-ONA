@@ -145,7 +145,7 @@ def calculate_network_metrics(G):
 
 def calculate_daily_metrics(client, messages, channel_id):
     """Calculate network metrics for each day"""
-    daily_metrics = defaultdict(lambda: defaultdict(list))
+    daily_metrics = defaultdict(dict)  # Changed to regular dict for date keys
     
     # Group messages by day
     messages_by_day = defaultdict(list)
@@ -160,10 +160,10 @@ def calculate_daily_metrics(client, messages, channel_id):
         G = build_interaction_network(client, daily_messages, channel_id)
         if G.number_of_nodes() > 0:  # Only calculate if network has nodes
             metrics = {
-                'Degree Centrality': nx.degree_centrality(G),
-                'Betweenness Centrality': nx.betweenness_centrality(G),
-                'Clustering Coefficient': nx.clustering(G),
-                'Page Rank': nx.pagerank(G)
+                'Degree Centrality / Communication Hubs': nx.degree_centrality(G),
+                'Betweenness Centrality / Bridges': nx.betweenness_centrality(G),
+                'Clustering Coefficient / Cohesion': nx.clustering(G),
+                'PageRank/ Influence': nx.pagerank(G)
             }
             
             # Calculate average for each metric
@@ -176,6 +176,9 @@ def calculate_daily_metrics(client, messages, channel_id):
 
 def plot_metric_trend(daily_metrics, metric_name, start_date=None, end_date=None):
     """Create a line chart for metric trends with date filtering"""
+    if metric_name not in daily_metrics or not daily_metrics[metric_name]:
+        return None
+        
     dates = list(daily_metrics[metric_name].keys())
     values = list(daily_metrics[metric_name].values())
     
@@ -183,7 +186,7 @@ def plot_metric_trend(daily_metrics, metric_name, start_date=None, end_date=None
     df = pd.DataFrame({
         'date': dates,
         'value': values
-    })
+    }).sort_values('date')  # Sort by date
     
     # Apply date filters if provided
     if start_date:
@@ -191,6 +194,9 @@ def plot_metric_trend(daily_metrics, metric_name, start_date=None, end_date=None
     if end_date:
         df = df[df['date'] <= end_date]
     
+    if df.empty:
+        return None
+        
     fig = go.Figure()
     fig.add_trace(go.Scatter(
         x=df['date'],
@@ -450,9 +456,9 @@ def display_summary_dashboard(metrics):
         
         # Isolation Indicator
         isolation_ratio = metrics['Isolated Members']['value'] / metrics['Total Members']
-        if isolation_ratio > 0.2:
+        if isolation_ratio > 0.3:
             isolation_health = "🔴 High Isolation"
-        elif isolation_ratio > 0.1:
+        elif isolation_ratio > 0.15:
             isolation_health = "🟡 Moderate Isolation"
         else:
             isolation_health = "🟢 Low Isolation"
@@ -569,9 +575,11 @@ if slack_token:
                             st.write("Trend Over Time")
                             
                             # Get the date range from the daily metrics
-                            if st.session_state.daily_metrics[selected_metric]:
-                                min_date = min(st.session_state.daily_metrics[selected_metric].keys())
-                                max_date = max(st.session_state.daily_metrics[selected_metric].keys())
+                            metric_data = st.session_state.daily_metrics.get(selected_metric, {})
+                            if metric_data:
+                                dates = list(metric_data.keys())
+                                min_date = min(dates)
+                                max_date = max(dates)
                                 
                                 # Add date range selectors
                                 date_col1, date_col2 = st.columns(2)
@@ -597,7 +605,10 @@ if slack_token:
                                     start_date,
                                     end_date
                                 )
-                                st.plotly_chart(trend_fig, use_container_width=True)
+                                if trend_fig:
+                                    st.plotly_chart(trend_fig, use_container_width=True)
+                                else:
+                                    st.warning("No data available for the selected date range")
                             else:
                                 st.warning("No trend data available for the selected metric")
 
