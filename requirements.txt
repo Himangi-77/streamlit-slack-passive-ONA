@@ -5,3 +5,4 @@ matplotlib
 slack-sdk
 plotly
 numpy
+scipy
